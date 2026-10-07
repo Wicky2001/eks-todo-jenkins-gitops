@@ -1,0 +1,32 @@
+# Operating system files
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Editor and IDE files
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Local environment and secret material
+.env
+.env.*
+!.env.example
+*.secret.yaml
+*.secret.yml
+secrets/
+
+# Kubernetes client and local cluster state
+.kube/
+kubeconfig
+kubeconfig.*
+
+# Logs and temporary files
+*.log
+*.tmp
+*.temp
+tmp/
+temp/
+
