@@ -1,0 +1,27 @@
+# Horizontal Pod Autoscaler: adds or removes backend pods based on CPU use.
+# It reads CPU use from metrics-server (installed by Terraform) and compares it with
+# the pod's CPU request in deployment.yaml. Above 70% on average -> more pods,
+# well below -> fewer pods, but never fewer than 2 or more than 5.
+# The Deployment has no "replicas" field, so Argo CD doesn't fight the HPA over the count.
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: backend-hpa
+  namespace: app
+  annotations:
+    # after the Deployment (wave 0)
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: backend-deployment
+  minReplicas: 2
+  maxReplicas: 5
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70
