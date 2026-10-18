@@ -22,3 +22,34 @@ spec:
             - containerPort: 8080
           image: 677501681528.dkr.ecr.us-east-1.amazonaws.com/eks-todo-frontend:244890720344f909dce2f5748c7ee7e842a6d766
           imagePullPolicy: Always
+
+          # nginx only serves the built web page files, so it needs very little.
+          # requests: what the scheduler reserves (the HPA measures CPU as a % of it).
+          # limits: memory only. No CPU limit, so it is never slowed down needlessly.
+          resources:
+            requests:
+              cpu: 50m
+              memory: 32Mi
+            limits:
+              memory: 64Mi
+
+          # /healthz is answered by nginx itself (see frontend/nginx.conf in the app repo).
+          # nginx starts in about a second, so no startup probe is needed.
+
+          # Not answering for 30s (3 x 10s) = stuck, so Kubernetes restarts the container.
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8080
+            periodSeconds: 10
+            timeoutSeconds: 2
+            failureThreshold: 3
+
+          # Not answering = take the pod out of the Service until it answers again.
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 8080
+            periodSeconds: 5
+            timeoutSeconds: 2
+            failureThreshold: 2
