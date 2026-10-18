@@ -29,4 +29,42 @@ spec:
             - configMapRef:
                 name: backend-db-config
 
+          # requests: what the scheduler reserves on a node for this pod. The HPA
+          # also measures CPU use as a % of the CPU request.
+          # limits: memory only. Above 256Mi the container is restarted (OOMKilled).
+          # No CPU limit, so the app is never slowed down while the node has spare CPU.
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              memory: 256Mi
+
+          # The app connects to the database before it starts listening, so give it
+          # up to 60s (30 x 2s) to start. Liveness and readiness wait until this passes.
+          startupProbe:
+            httpGet:
+              path: /health
+              port: 8081
+            periodSeconds: 2
+            failureThreshold: 30
+
+          # Not answering for 30s (3 x 10s) = stuck, so Kubernetes restarts the container.
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8081
+            periodSeconds: 10
+            timeoutSeconds: 2
+            failureThreshold: 3
+
+          # Not answering = take the pod out of the Service until it answers again.
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8081
+            periodSeconds: 5
+            timeoutSeconds: 2
+            failureThreshold: 2
+
 
