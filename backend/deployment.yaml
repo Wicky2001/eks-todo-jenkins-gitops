@@ -40,31 +40,42 @@ spec:
             limits:
               memory: 256Mi
 
-          # The app connects to the database before it starts listening, so give it
-          # up to 60s (30 x 2s) to start. Liveness and readiness wait until this passes.
+          # Endpoints (backend/src/routes/healthRoutes.js in the app repo):
+          #   /livez  only checks the process itself (no database)
+          #   /readyz also checks the database with a "SELECT 1"
+
+          # Startup: the server only starts listening after it has connected to the
+          # database, so "answers /livez" also means "finished starting". Same endpoint as
+          # liveness, as the Kubernetes docs recommend. Up to 60s (30 x 2s) to start.
+          # Liveness and readiness only start after this passes.
           startupProbe:
             httpGet:
-              path: /health
+              path: /livez
               port: 8081
             periodSeconds: 2
+            timeoutSeconds: 2
             failureThreshold: 30
 
-          # Not answering for 30s (3 x 10s) = stuck, so Kubernetes restarts the container.
+          # Liveness: no answer for 30s (3 x 10s) = the process is stuck, so restart it.
+          # It never checks the database: restarting pods would not fix a database outage.
           livenessProbe:
             httpGet:
-              path: /health
+              path: /livez
               port: 8081
             periodSeconds: 10
             timeoutSeconds: 2
             failureThreshold: 3
 
-          # Not answering = take the pod out of the Service until it answers again.
+          # Readiness: database unreachable (or no answer) = take the pod out of the Service
+          # until it answers again. No restart. The app gives the database 10s, so the probe
+          # waits 11s, to get the app's own "503 database down" answer. Checked every 10s,
+          # so one check finishes before the next one starts.
           readinessProbe:
             httpGet:
-              path: /health
+              path: /readyz
               port: 8081
-            periodSeconds: 5
-            timeoutSeconds: 2
+            periodSeconds: 10
+            timeoutSeconds: 11
             failureThreshold: 2
 
 
