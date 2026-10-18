@@ -25,3 +25,17 @@ spec:
         target:
           type: Utilization
           averageUtilization: 70
+
+  # How fast to change the number of pods. Not written = Kubernetes defaults:
+  # scale up right away, and scale down after 5 minutes but possibly all pods at once.
+  behavior:
+    scaleDown:
+      # only scale down if CPU has stayed low for the whole last 5 minutes
+      stabilizationWindowSeconds: 300
+      policies:
+        # then remove at most 1 pod per minute, so a short dip in CPU (for example
+        # pods waiting on a slow database) can not remove most pods at once
+        - type: Pods
+          value: 1
+          periodSeconds: 60
+    # scaleUp is not set: keep the default, add pods quickly when CPU goes up
