@@ -17,6 +17,9 @@ Desktop.ini
 *.secret.yaml
 *.secret.yml
 secrets/
+# ...except the stacks' secrets/ folders: they only hold ExternalSecrets (pointers to AWS
+# Secrets Manager) and Elasticsearch role lists, never a password. Argo CD needs them in Git.
+!platform/*/manifests/secrets/
 
 # Kubernetes client and local cluster state
 .kube/
