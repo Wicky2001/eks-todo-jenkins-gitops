@@ -1,0 +1,47 @@
+# Argo CD project "platform": the rules for the shared stacks (monitoring, logging, tracing).
+# Created by the bootstrap app (k8s/argocd/bootstrap/bootstrap-app.yaml in the app repo).
+# It can deploy the GitOps repo and the three Helm charts, only into these namespaces,
+# and only these cluster-wide kinds.
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: platform
+  # Argo CD keeps all its projects and apps in its own namespace
+  namespace: argocd
+  annotations:
+    # created before the cards that use it (they are in sync wave 0)
+    argocd.argoproj.io/sync-wave: "-1"
+spec:
+  description: "Shared platform stacks: monitoring, logging, tracing"
+  sourceRepos:
+    - https://github.com/Wicky2001/eks-todo-jenkins-gitops.git
+    - https://prometheus-community.github.io/helm-charts
+    - https://fluent.github.io/helm-charts
+    - https://jaegertracing.github.io/helm-charts
+  destinations:
+    - namespace: monitoring
+      server: https://kubernetes.default.svc
+    - namespace: logging
+      server: https://kubernetes.default.svc
+    - namespace: tracing
+      server: https://kubernetes.default.svc
+    # kube-prometheus-stack adds Services here to scrape CoreDNS, kube-proxy, ...
+    - namespace: kube-system
+      server: https://kubernetes.default.svc
+  # cluster-wide objects the charts and manifests need
+  clusterResourceWhitelist:
+    - group: apiextensions.k8s.io
+      kind: CustomResourceDefinition
+    - group: rbac.authorization.k8s.io
+      kind: ClusterRole
+    - group: rbac.authorization.k8s.io
+      kind: ClusterRoleBinding
+    - group: admissionregistration.k8s.io
+      kind: MutatingWebhookConfiguration
+    - group: admissionregistration.k8s.io
+      kind: ValidatingWebhookConfiguration
+    - group: storage.k8s.io
+      kind: StorageClass
+    # trust-manager Bundle (copies the logs Elasticsearch CA to the monitoring namespace)
+    - group: trust.cert-manager.io
+      kind: Bundle

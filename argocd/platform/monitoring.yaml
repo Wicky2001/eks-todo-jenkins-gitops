@@ -1,0 +1,55 @@
+# Argo CD card "monitoring": Prometheus, Alertmanager and Grafana (kube-prometheus-stack),
+# plus platform/monitoring/manifests (storage classes, Grafana route, ServiceMonitor,
+# alert rules, Alertmanager config). Created by the bootstrap app
+# (k8s/argocd/bootstrap/bootstrap-app.yaml in the app repo).
+# The namespace comes from Terraform (tf/infra/modules/observability-base). The Secrets are
+# copied from AWS Secrets Manager by ESO (platform/monitoring/manifests/secrets).
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: monitoring
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: platform
+  sources:
+    # the chart, with the values files from this repo ("$values" = the source below)
+    - repoURL: https://prometheus-community.github.io/helm-charts
+      chart: kube-prometheus-stack
+      targetRevision: 87.5.0
+      helm:
+        # keeps the names the rest of the setup uses, like monitoring-grafana
+        releaseName: monitoring
+        valueFiles:
+          - $values/platform/monitoring/helm/helm-values.yaml
+          - $values/platform/monitoring/helm/grafana-github-sso.yaml
+    # this repo, only to read the values files above
+    - repoURL: https://github.com/Wicky2001/eks-todo-jenkins-gitops.git
+      targetRevision: main
+      ref: values
+    # this repo, the plain Kubernetes objects
+    - repoURL: https://github.com/Wicky2001/eks-todo-jenkins-gitops.git
+      targetRevision: main
+      path: platform/monitoring/manifests
+      # include the subfolders (storage-classes/, secrets/, ...)
+      directory:
+        recurse: true
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: monitoring
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      # the chart's CRDs are too big for a normal apply
+      - ServerSideApply=true
+      # ServiceMonitor and PrometheusRule need the chart's CRDs, which arrive in the same sync
+      - SkipDryRunOnMissingResource=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 30s
+        factor: 2
+        maxDuration: 5m

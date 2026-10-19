@@ -1,0 +1,45 @@
+# Argo CD card "tracing": Jaeger (chart) and platform/tracing/manifests (the "traces"
+# Elasticsearch). Created by the bootstrap app (k8s/argocd/bootstrap/bootstrap-app.yaml
+# in the app repo). The namespace comes from Terraform
+# (tf/infra/modules/observability-base). jaeger-user's Secret is copied from AWS Secrets
+# Manager by ESO (platform/tracing/manifests/secrets).
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: tracing
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: platform
+  sources:
+    - repoURL: https://jaegertracing.github.io/helm-charts
+      chart: jaeger
+      targetRevision: 4.14.1
+      helm:
+        releaseName: jaeger
+        valueFiles:
+          - $values/platform/tracing/helm/jaeger-values.yaml
+    - repoURL: https://github.com/Wicky2001/eks-todo-jenkins-gitops.git
+      targetRevision: main
+      ref: values
+    - repoURL: https://github.com/Wicky2001/eks-todo-jenkins-gitops.git
+      targetRevision: main
+      path: platform/tracing/manifests
+      # include the subfolders (storage-classes/, secrets/, ...)
+      directory:
+        recurse: true
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: tracing
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    # Jaeger waits for the CA Secret that ECK creates for Elasticsearch, so retry
+    retry:
+      limit: 5
+      backoff:
+        duration: 30s
+        factor: 2
+        maxDuration: 5m

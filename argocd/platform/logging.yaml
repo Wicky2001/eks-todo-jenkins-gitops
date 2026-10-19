@@ -1,0 +1,46 @@
+# Argo CD card "logging": Fluent Bit (chart) and platform/logging/manifests (the "logs"
+# Elasticsearch, its storage class, and the CA copy for Grafana). Created by the bootstrap
+# app (k8s/argocd/bootstrap/bootstrap-app.yaml in the app repo). The ECK operator,
+# trust-manager and the namespace come from Terraform
+# (tf/infra/modules/observability-base). The users' Secrets are copied from AWS Secrets
+# Manager by ESO (platform/logging/manifests/secrets).
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: logging
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: platform
+  sources:
+    - repoURL: https://fluent.github.io/helm-charts
+      chart: fluent-bit
+      targetRevision: 0.58.3
+      helm:
+        releaseName: fluent-bit
+        valueFiles:
+          - $values/platform/logging/helm/fluent-bit-values.yaml
+    - repoURL: https://github.com/Wicky2001/eks-todo-jenkins-gitops.git
+      targetRevision: main
+      ref: values
+    - repoURL: https://github.com/Wicky2001/eks-todo-jenkins-gitops.git
+      targetRevision: main
+      path: platform/logging/manifests
+      # include the subfolders (storage-classes/, secrets/, ...)
+      directory:
+        recurse: true
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: logging
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    # Fluent Bit waits for the CA Secret that ECK creates for Elasticsearch, so retry
+    retry:
+      limit: 5
+      backoff:
+        duration: 30s
+        factor: 2
+        maxDuration: 5m

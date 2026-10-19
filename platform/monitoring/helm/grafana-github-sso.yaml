@@ -1,0 +1,38 @@
+# Log in to Grafana with GitHub. Helm merges this on top of helm-values.yaml.
+#
+# The org name, client ID, client secret and team rule come from the Secret
+# grafana-github-oauth (copied from AWS Secrets Manager by ESO, ../manifests/secrets), so nothing
+# private is in Git. Grafana reads any GF_<SECTION>_<KEY> environment variable as a setting:
+# GF_AUTH_GITHUB_CLIENT_ID = [auth.github] client_id, and so on.
+#
+# Callback URL for the GitHub OAuth App: https://grafana.jawsight.online/login/github
+# (built from root_url in helm-values.yaml)
+
+grafana:
+  envValueFrom:
+    GF_AUTH_GITHUB_CLIENT_ID:
+      secretKeyRef:
+        name: grafana-github-oauth
+        key: client-id
+    GF_AUTH_GITHUB_CLIENT_SECRET:
+      secretKeyRef:
+        name: grafana-github-oauth
+        key: client-secret
+    # only members of this GitHub org can log in
+    GF_AUTH_GITHUB_ALLOWED_ORGANIZATIONS:
+      secretKeyRef:
+        name: grafana-github-oauth
+        key: allowed-organizations
+    # GitHub teams come in as "@<org>/<team>": platform = Admin, developers = Viewer
+    GF_AUTH_GITHUB_ROLE_ATTRIBUTE_PATH:
+      secretKeyRef:
+        name: grafana-github-oauth
+        key: role-attribute-path
+
+  grafana.ini:
+    auth.github:
+      enabled: true
+      allow_sign_up: true
+      scopes: user:email,read:org
+      # in the org but in neither team = can't log in
+      role_attribute_strict: true
