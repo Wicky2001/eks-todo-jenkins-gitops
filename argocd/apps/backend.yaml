@@ -1,0 +1,32 @@
+# Argo CD card "backend": the backend, its database migration Job and the todo HTTPRoute.
+# Created by the bootstrap app (k8s/argocd/bootstrap/bootstrap-app.yaml in the app repo),
+# which applies every file in this repo's argocd/ folder.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: backend
+  namespace: argocd
+  # deleting this card also deletes what it deployed
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: apps
+  sources:
+    # sync wave -1: the migration Job runs before the backend is updated
+    - repoURL: https://github.com/Wicky2001/eks-todo-jenkins-gitops.git
+      targetRevision: main
+      path: migration
+    - repoURL: https://github.com/Wicky2001/eks-todo-jenkins-gitops.git
+      targetRevision: main
+      path: backend
+    # todo.jawsight.online: /api and /health to the backend, everything else to the frontend
+    - repoURL: https://github.com/Wicky2001/eks-todo-jenkins-gitops.git
+      targetRevision: main
+      path: routes
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: app
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true

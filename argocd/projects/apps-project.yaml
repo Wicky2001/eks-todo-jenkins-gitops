@@ -1,0 +1,19 @@
+# Argo CD project "apps": the rules for our own services (the backend and frontend cards).
+# They can only deploy from this repo, and only into the "app" namespace.
+# Created by the bootstrap app (k8s/argocd/bootstrap/bootstrap-app.yaml in the app repo).
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: apps
+  # Argo CD keeps all its projects and apps in its own namespace
+  namespace: argocd
+  annotations:
+    # created before the cards that use it (they are in sync wave 0)
+    argocd.argoproj.io/sync-wave: "-1"
+spec:
+  description: "The todo app's own services"
+  sourceRepos:
+    - https://github.com/Wicky2001/eks-todo-jenkins-gitops.git
+  destinations:
+    - namespace: app
+      server: https://kubernetes.default.svc

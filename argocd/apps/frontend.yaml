@@ -1,0 +1,22 @@
+# Argo CD card "frontend": the frontend Deployment, Service and HPA.
+# Created by the bootstrap app (k8s/argocd/bootstrap/bootstrap-app.yaml in the app repo).
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: frontend
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: apps
+  source:
+    repoURL: https://github.com/Wicky2001/eks-todo-jenkins-gitops.git
+    targetRevision: main
+    path: frontend
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: app
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
