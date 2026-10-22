@@ -22,7 +22,7 @@ spec:
             type: PathPrefix
             value: /health
       backendRefs:
-        - name: backend-service
+        - name: backend-stable-service
           port: 8081
 
     # everything else goes to the frontend

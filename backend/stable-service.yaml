@@ -1,7 +1,9 @@
+# The "stable door": during a canary release it leads only to the OLD version's pods.
+# The "canary door" is canary-service.yaml.
 apiVersion: v1
 kind: Service
 metadata:
-  name: backend-service
+  name: backend-stable-service
   namespace: app
 spec:
   selector:

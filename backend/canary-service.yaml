@@ -1,0 +1,19 @@
+# The "canary door": during a canary release it leads only to the NEW version's pods.
+# backend-stable-service (stable-service.yaml) is the "stable door": only the OLD version's pods.
+# Both select app=backend here. Argo Rollouts adds a version label to each selector
+# (rollouts-pod-template-hash), so each door leads to one version only.
+# Between releases, both doors lead to the same (stable) pods.
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend-canary-service
+  namespace: app
+spec:
+  selector:
+    app: backend
+  type: ClusterIP
+  ports:
+    - protocol: TCP
+      name: backend
+      port: 8081
+      targetPort: 8081
