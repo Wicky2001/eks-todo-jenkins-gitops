@@ -26,7 +26,19 @@ spec:
   destination:
     server: https://kubernetes.default.svc
     namespace: app
+  # During a canary release Argo Rollouts changes the backend weights in the todo
+  # HTTPRoute (90/10, 50/50, ...). Git keeps 100/0, so without this, self-heal would
+  # put 100/0 back and stop the canary. Only the weights are ignored.
+  ignoreDifferences:
+    - group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      name: todo
+      jqPathExpressions:
+        - .spec.rules[].backendRefs[].weight
   syncPolicy:
     automated:
       prune: true
       selfHeal: true
+    syncOptions:
+      # also keep the ignored weights when Argo CD syncs (not only in the diff)
+      - RespectIgnoreDifferences=true

@@ -13,7 +13,10 @@ spec:
   hostnames:
     - todo.jawsight.online
   rules:
-    # /api and /health go to the backend
+    # /api and /health go to the backend, through two doors.
+    # Between releases: stable 100, canary 0 (everyone gets the stable version).
+    # During a canary release Argo Rollouts changes these weights (90/10, 50/50, ...),
+    # so the backend Argo CD app ignores them (argocd/apps/backend.yaml).
     - matches:
         - path:
             type: PathPrefix
@@ -24,6 +27,10 @@ spec:
       backendRefs:
         - name: backend-stable-service
           port: 8081
+          weight: 100
+        - name: backend-canary-service
+          port: 8081
+          weight: 0
 
     # everything else goes to the frontend
     - matches:
