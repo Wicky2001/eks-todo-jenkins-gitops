@@ -1,0 +1,30 @@
+# The canary judge. The backend Rollout (rollout.yaml) runs this check while a canary
+# release is in progress. It asks Prometheus: "of the /api requests the NEW version
+# answered in the last 2 minutes, how many failed (HTTP 5xx)?"
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisTemplate
+metadata:
+  name: backend-canary-error-rate
+  namespace: app
+spec:
+  args:
+    # the new pods' version label, given by the Rollout
+    - name: canary-hash
+  metrics:
+    - name: error-rate
+      # ask every minute, for as long as the canary runs
+      interval: 1m
+      # good: fewer than 5% of the requests failed
+      successCondition: result[0] < 0.05
+      # 2 bad answers = the canary failed, roll back
+      failureLimit: 1
+      provider:
+        prometheus:
+          address: http://monitoring-kube-prometheus-prometheus.monitoring.svc:9090
+          # failed requests / all requests, new version only (the version label comes
+          # from the PodMonitor). "or vector(...)": with no requests yet the answer is
+          # 0 (good) instead of empty.
+          query: |
+            (sum(rate(http_requests_total{namespace="app", rollouts_pod_template_hash="{{args.canary-hash}}", path=~"/api.*", status_code=~"5.."}[2m])) or vector(0))
+            /
+            (sum(rate(http_requests_total{namespace="app", rollouts_pod_template_hash="{{args.canary-hash}}", path=~"/api.*"}[2m])) or vector(1))

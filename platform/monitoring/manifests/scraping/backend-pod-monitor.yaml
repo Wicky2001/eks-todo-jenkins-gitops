@@ -1,0 +1,27 @@
+# Prometheus scrapes /metrics from every backend pod directly (a PodMonitor, not a
+# ServiceMonitor). During a canary release the new pods sit only behind the canary
+# Service, so going through one Service would miss them.
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  labels:
+    # Prometheus only picks up monitors with this label
+    release: monitoring
+  name: backend-pod-monitor
+  namespace: monitoring
+spec:
+  # pods with app=backend in the app namespace
+  selector:
+    matchLabels:
+      app: backend
+  namespaceSelector:
+    matchNames:
+      - app
+  podMetricsEndpoints:
+    - port: http          # the container port name in backend/rollout.yaml
+      path: /metrics
+      interval: 2s
+  # Copy the pod's version label onto every metric (as rollouts_pod_template_hash),
+  # so the canary check (backend/canary-analysis-template.yaml) can read the new version only.
+  podTargetLabels:
+    - rollouts-pod-template-hash
