@@ -1,13 +1,45 @@
-apiVersion: apps/v1
-kind: Deployment
+# The backend as an Argo Rollout instead of a Deployment. Same pods (the template below
+# is unchanged), but new versions are released as a canary by the Argo Rollouts
+# controller, not all at once by the Kubernetes Deployment controller.
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
 metadata:
-  name: backend-deployment
+  name: backend-rollout
   namespace: app
   annotations:
     # Wave 0: updated only after the migration Job (wave -1) is Complete.
     argocd.argoproj.io/sync-wave: "0"
 spec:
   # No replicas field: the HPA (hpa.yaml) decides the number of pods (2 to 5).
+
+  # How a new version (a new image tag from Jenkins) is released.
+  # The very first release has no old version yet, so it skips the steps.
+  strategy:
+    canary:
+      # the two doors (stable-service.yaml and canary-service.yaml). Argo Rollouts adds a
+      # version label to each one, so each door leads to one version only.
+      stableService: backend-stable-service
+      canaryService: backend-canary-service
+
+      # Istio splits the traffic: the plugin changes the weights of the two doors in the
+      # todo HTTPRoute (routes/todo-route.yaml).
+      trafficRouting:
+        plugins:
+          argoproj-labs/gatewayAPI:
+            httpRoute: todo
+            namespace: app
+
+      # The canary steps, run every time the image changes:
+      steps:
+        # 10% of /api requests go to the new version (1 new pod), then wait 5 minutes
+        - setWeight: 10
+        - pause: {duration: 5m}
+        # half of the requests, then wait 5 minutes again
+        - setWeight: 50
+        - pause: {duration: 5m}
+        # after the last step: 100%, the new version becomes the stable one,
+        # and the old pods are removed
+
   selector:
     matchLabels:
       app: backend
