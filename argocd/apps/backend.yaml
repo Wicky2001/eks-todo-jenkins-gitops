@@ -26,7 +26,7 @@ spec:
   destination:
     server: https://kubernetes.default.svc
     namespace: app
-  # During a canary release Argo Rollouts changes the backend weights in the todo
+  # During a canary release Argo Rollouts changes the backend weights in the routes/todo-route.yaml
   # HTTPRoute (90/10, 50/50, ...). Git keeps 100/0, so without this, self-heal would
   # put 100/0 back and stop the canary. Only the weights are ignored.
   ignoreDifferences:
