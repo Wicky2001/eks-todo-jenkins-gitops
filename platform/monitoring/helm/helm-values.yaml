@@ -59,13 +59,14 @@ grafana:
       access: proxy
       url: http://jaeger.tracing.svc.cluster.local:16686
       jsonData:
-        # "Logs for this span" opens the logs from 1 minute before to 1 minute after the span.
+        # Trace to logs: "Logs for this span" opens only the log lines of this trace
+        # (they carry trace_id), searched from 1 minute before to 1 minute after the span.
         tracesToLogsV2:
           datasourceUid: elasticsearch-logs
           spanStartTimeShift: "-1m"
           spanEndTimeShift: "1m"
-          filterByTraceID: false
-          filterBySpanID: false
+          customQuery: true
+          query: 'trace_id:"$${__trace.traceId}"'
 
   # Keep dashboards and users on an EBS disk, otherwise they are lost on every restart.
   persistence:
