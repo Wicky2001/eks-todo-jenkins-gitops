@@ -51,6 +51,13 @@ grafana:
         timeField: "@timestamp"
         logMessageField: log
         tlsAuthWithCACert: true
+        # ($$ = a literal $, so Grafana does not treat it as an environment variable)
+        # Log to trace: backend log lines carry trace_id (OpenTelemetry pino instrumentation),
+        # so each one gets a link that opens its trace in Jaeger.
+        dataLinks:
+          - field: trace_id
+            url: "$${__value.raw}"
+            datasourceUid: jaeger
 
     # Traces. Grafana goes through Jaeger's API; the Jaeger UI itself stays private.
     - name: Jaeger
